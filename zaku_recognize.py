@@ -1,9 +1,13 @@
 # USAGE
-# python3 recognize_video.py --detector face_detection_model --recognizer output/recognizer.pickle --le output/le.pickle
+# python3 zaku_recognize.py --detector face_detection_model --recognizer output/recognizer.pickle --le output/le.pickle
 
 # import the necessary packages
+
 from imutils.video import VideoStream
 from imutils.video import FPS
+from imutils.video.pivideostream import PiVideoStream
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 import numpy as np
 import argparse
 import imutils
@@ -16,8 +20,6 @@ import os
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--detector", required=True,
     help="path to OpenCV's deep learning face detector")
-# ap.add_argument("-m", "--embedding-model", required=True,
-#   help="path to OpenCV's deep learning face embedding model")
 ap.add_argument("-r", "--recognizer", required=True,
     help="path to model trained to recognize faces")
 ap.add_argument("-l", "--le", required=True,
@@ -33,17 +35,14 @@ modelPath = os.path.sep.join([args["detector"],
     "res10_300x300_ssd_iter_140000.caffemodel"])
 detector = cv2.dnn.readNetFromCaffe(protoPath, modelPath)
 
-# load our serialized face embedding model from disk
-# print("[INFO] loading face recognizer...")
-# embedder = cv2.dnn.readNetFromTorch(args["embedding_model"])
-
 # load the actual face recognition model along with the label encoder
-recognizer = pickle.loads(open(args["recognizer"], "rb").read())
-le = pickle.loads(open(args["le"], "rb").read())
+#recognizer = pickle.loads(open(args["recognizer"], "rb").read())
+#le = pickle.loads(open(args["le"], "rb").read())
 
 # initialize the video stream, then allow the camera sensor to warm up
 print("[INFO] starting video stream...")
-vs = VideoStream(usePiCamera=True).start()
+vs = PiVideoStream().start()
+
 time.sleep(2.0)
 
 # start the FPS throughput estimator
@@ -52,12 +51,12 @@ fps = FPS().start()
 # loop over frames from the video file stream
 while True:
     # grab the frame from the threaded video stream
-    frame = vs.read()
 
     # resize the frame to have a width of 600 pixels (while
     # maintaining the aspect ratio), and then grab the image
     # dimensions
-    frame = imutils.resize(frame, width=600)
+    frame = vs.read()
+    frame = imutils.resize(frame, width=400)
     (h, w) = frame.shape[:2]
 
     # construct a blob from the image
@@ -95,22 +94,21 @@ while True:
             if fW < 20 or fH < 20:
                 continue
 
-            y = startY - 10 if startY - 10 > 10 else startY + 10
+            # y = startY - 10 if startY - 10 > 10 else startY + 10
             cv2.rectangle(frame, (startX, startY), (endX, endY),
                 (0, 0, 255), 2)
-            cv2.putText(frame, "hello", (startX, y),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
-
-    # update the FPS counter
-    fps.update()
-
-    # show the output frame
+            # cv2.putText(frame, "hello", (startX, y),
+               # cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
+        # show the output frame
     cv2.imshow("Frame", frame)
+
+    fps.update()
     key = cv2.waitKey(1) & 0xFF
 
     # if the `q` key was pressed, break from the loop
     if key == ord("q"):
         break
+
 
 # stop the timer and display FPS information
 fps.stop()
